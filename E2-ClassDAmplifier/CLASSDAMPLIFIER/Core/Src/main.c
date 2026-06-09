@@ -18,8 +18,6 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include <math.h>
-#include <stdint.h>
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -34,6 +32,7 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 #define arr_value 5669//arr for 44.1kHz
+#define INV_4095 (1.0f / 4095.0f*1.2f)
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -51,7 +50,7 @@ DMA_HandleTypeDef handle_GPDMA1_Channel0;
 TIM_HandleTypeDef htim1;
 
 /* USER CODE BEGIN PV */
-uint16_t adc_val[1];
+volatile uint16_t adc_val[1];
 float_t max_vol;
 /* USER CODE END PV */
 
@@ -114,10 +113,10 @@ int main(void)
   MX_ICACHE_Init();
   MX_ADC2_Init();
   /* USER CODE BEGIN 2 */
-  HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc_val, 2);
+  HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc_val, 1);
   HAL_TIM_OC_Start(&htim1, TIM_CHANNEL_1);
-  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);
-  HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_2);
+  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_3);
+  HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_3);
   
   /* USER CODE END 2 */
 
@@ -130,12 +129,11 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
    HAL_ADC_Start(&hadc2);
-    max_vol=((float_t)(HAL_ADC_GetValue(&hadc2)))/4095.0;
-    uint16_t pwm= (uint16_t)((max_vol*(float_t)adc_val[0]*(float_t)arr_value)/4095.0);
+    max_vol=((float_t)(HAL_ADC_GetValue(&hadc2)))*INV_4095;
+    uint16_t pwm= (uint16_t)((max_vol*(float_t)adc_val[0]*(float_t)arr_value)*INV_4095);
   // adc_top is 4095 and arr_value is the top of duty cycle
-  __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_2,pwm);
+  __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_3,pwm);
 //(adc_val*arr_value)/adc_top regladetres
-  //__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_2,2500);//(adc_val*arr_value)/adc_top regladetres
   }
   /* USER CODE END 3 */
 }
@@ -437,15 +435,15 @@ static void MX_TIM1_Init(void)
     Error_Handler();
   }
   sConfigOC.OCMode = TIM_OCMODE_PWM1;
-  sConfigOC.Pulse = 2834;
-  if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_2) != HAL_OK)
+  sConfigOC.Pulse = 0;
+  if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_3) != HAL_OK)
   {
     Error_Handler();
   }
   sBreakDeadTimeConfig.OffStateRunMode = TIM_OSSR_DISABLE;
   sBreakDeadTimeConfig.OffStateIDLEMode = TIM_OSSI_DISABLE;
   sBreakDeadTimeConfig.LockLevel = TIM_LOCKLEVEL_OFF;
-  sBreakDeadTimeConfig.DeadTime = 50;
+  sBreakDeadTimeConfig.DeadTime = 10;
   sBreakDeadTimeConfig.BreakState = TIM_BREAK_DISABLE;
   sBreakDeadTimeConfig.BreakPolarity = TIM_BREAKPOLARITY_HIGH;
   sBreakDeadTimeConfig.BreakFilter = 0;
